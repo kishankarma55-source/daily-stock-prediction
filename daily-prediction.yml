@@ -1,0 +1,35 @@
+name: Daily Indian Stock Predictions
+
+on:
+  schedule:
+    # 03:30 UTC = 09:00 IST, Mon-Fri. GitHub may start a few minutes late.
+    - cron: "30 3 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Run prediction and performance report
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+        run: python predictor.py
+      - name: Save prediction history
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prediction_history/
+          git diff --cached --quiet || git commit -m "Save daily predictions"
+          git push
